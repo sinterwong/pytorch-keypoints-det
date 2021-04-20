@@ -19,9 +19,10 @@ train_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/
 val_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
 
 # solver
-device_ids = [3]
+device_ids = [2]
 batch_size = 64
 epoch = 300
+optim = "sgd"
 lr_gamma = 0.5  # 衰减比率
 lr_step_size = 35  # 多少 epoch 衰减一次
 lr = 2e-3
@@ -37,7 +38,7 @@ save_checkpoint = 'checkpoint'
 resume = None
 
 # knowledge distill
-teacher = None
-teacker_ckpt = "checkpoint/resnet50_hand14c_256x256_95.714.pth"
+teacher = "resnet50"
+teacker_ckpt = "checkpoint/resnet50_handpose_224x224_88.pth"
 alpha = 0.9
 temperature = 6

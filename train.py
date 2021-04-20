@@ -57,7 +57,8 @@ elif cfg.model.split("-")[0] == "RepVGG":
     repvgg_build_func = get_RepVGG_func_by_name(cfg.model)
     net = repvgg_build_func(num_classes=cfg.num_classes, pretrained_path=cfg.pretrained, deploy=False)
 else:
-    raise Exception("暂未支持, 请在此处手动添加")
+    raise Exception("暂未支持%s network, 请在此处手动添加" % cfg.model)
+
 
 net = net.to(device)
 if device == 'cuda' and len(cfg.device_ids) > 1:
@@ -75,7 +76,7 @@ if cfg.teacher:
         repvgg_build_func = get_RepVGG_func_by_name(cfg.teacher)
         t_net = repvgg_build_func(num_classes=cfg.num_classes, pretrained_path=None, deploy=True)
     else:
-        raise Exception("暂未支持%s teacher, 请在此处手动添加" % cfg.teacher)
+        raise Exception("暂未支持%s teacher network, 请在此处手动添加" % cfg.teacher)
 else:
     t_net = None
 
@@ -84,15 +85,24 @@ if t_net:
     model_info = torch.load(cfg.teacker_ckpt)
     t_net.load_state_dict(model_info["net"])
     t_net = t_net.to(device)
-    t_criterion = nn.MSELoss(reduction="none")
+    t_criterion = nn.MSELoss(reduce=True, reduction="mean")
 
 criterion = nn.MSELoss(reduce=True, reduction="mean")
 
-optimizer = optim.SGD(
-                    filter(lambda p: p.requires_grad, net.parameters()), 
-                    lr=cfg.lr, 
-                    momentum=cfg.momentum, 
-                    weight_decay=cfg.weight_decay)
+if cfg.optim == "sgd":
+    optimizer = optim.SGD(
+                        filter(lambda p: p.requires_grad, net.parameters()), 
+                        lr=cfg.lr, 
+                        momentum=cfg.momentum, 
+                        weight_decay=cfg.weight_decay)
+elif cfg.optim == "adam":
+    optimizer = torch.optim.Adam(
+                        filter(lambda p: p.requires_grad, net.parameters()), 
+                        lr=cfg.lr, 
+                        betas=(0.9, 0.99), 
+                        weight_decay=cfg.weight_decay)
+else:
+    raise Exception("暂未支持%s optimizer, 请在此处手动添加" % cfg.optim)
 
 lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=cfg.lr_step_size, gamma=cfg.lr_gamma)
 
@@ -124,8 +134,9 @@ def train(epoch):
                 if t_net:
                     with torch.no_grad():
                         teacher_outputs = t_net(inputs)
-                    d_loss = t_criterion(outputs, teacher_outputs)
-                    loss += d_loss
+                    s_loss = criterion(outputs, targets) * 10.
+                    d_loss = t_criterion(outputs, teacher_outputs) * 10.
+                    loss = s_loss * (1 - cfg.alpha) + d_loss * cfg.alpha
                 else:
                     loss = criterion(outputs, targets) * 10.
         else:
@@ -135,8 +146,9 @@ def train(epoch):
             if t_net:
                 with torch.no_grad():
                     teacher_outputs = t_net(inputs)
-                d_loss = t_criterion(outputs, teacher_outputs)
-                loss += d_loss
+                s_loss = criterion(outputs, targets) * 10.
+                d_loss = t_criterion(outputs, teacher_outputs) * 10.
+                loss = s_loss * (1 - cfg.alpha) + d_loss * cfg.alpha
 
         if cfg.use_amp:
             # Scales loss. 为了梯度放大.
@@ -183,7 +195,7 @@ def test(epoch):
                 % (test_loss/(batch_idx+1), 100.*acc/(batch_idx+1), total))
 
     # Save checkpoint.
-    acc = 100.*acc
+    acc = 100.*acc/(batch_idx+1)
     if acc > best_acc:
         print('Saving..')
         state = {

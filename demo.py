@@ -59,8 +59,8 @@ class Inference():
         # TODO
 
 if __name__ == "__main__":
-    model = 'resnet10'
-    model_path = 'checkpoint/best_resnet10_handpose_128x128.pth'
+    model = 'resnet50'
+    model_path = 'checkpoint/best_resnet50_handpose_224x224.pth'
     img_path = 'data/demo.jpg'
-    engine = Inference(model, model_path, [128, 128])
+    engine = Inference(model, model_path, [224, 224])
     engine.single_image(img_path)
