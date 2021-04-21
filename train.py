@@ -15,10 +15,8 @@ from models.resnet import resnet10, resnet18, resnet34, resnet50
 from models.seresnet import se_resnet10, se_resnet18, se_resnet34, se_resnet50
 from models.repvgg import get_RepVGG_func_by_name
 from models.mobilenetv3 import mobilenet_v3_small
-from utils import progress_bar
+from tools.utils import progress_bar
 from loss.amsoftmax import AMSoftmax
-from loss.distill import KLDivLoss
-
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -37,7 +35,6 @@ print('==> Preparing data..')
 # get dataloader
 trainset = ImageDataSet(root=cfg.train_root, input_size=cfg.input_size, is_train=True, augments_hyp=cfg.augment_hyp)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers)
-
 
 testset = ImageDataSet(root=cfg.val_root, input_size=cfg.input_size, is_train=False)
 testloader = torch.utils.data.DataLoader(testset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
@@ -74,6 +71,7 @@ if device == 'cuda' and len(cfg.device_ids) > 1:
     net = torch.nn.DataParallel(net, device_ids=range(len(cfg.device_ids)))
     cudnn.benchmark = True
 
+# Knowledge Distillation 
 if cfg.teacher:
     if cfg.teacher == "resnet18":
         t_net = resnet18(pretrained=None, num_classes=cfg.num_classes)
@@ -95,12 +93,30 @@ if cfg.teacher:
 else:
     t_net = None
 
-# load teacher
+# Load teacher weights
 if t_net:
     model_info = torch.load(cfg.teacker_ckpt)
     t_net.load_state_dict(model_info["net"])
     t_net = t_net.to(device)
     t_criterion = nn.MSELoss(reduce=True, reduction="mean")
+
+# Get the intermediate output predistill from teacher and student
+if t_net and cfg.dis_feature:
+    fs_criterion = [nn.MSELoss(reduction="mean")] * len(cfg.dis_feature.keys())
+    activation = {}
+    def get_activation(name):
+        def hook(model, inputs, outputs):
+            activation[name] = outputs
+        return hook
+
+    def get_hooks():
+        hooks = []
+        for k, (idx, name) in cfg.dis_feature.items():
+            # S-model
+            hooks.append(net._modules[k][idx]._modules[name].register_forward_hook(get_activation("s_{}_{}".format(k, name))))
+            # T-model
+            hooks.append(t_net._modules[k][idx]._modules[name].register_forward_hook(get_activation("t_{}_{}".format(k, name))))
+        return hooks
 
 criterion = nn.MSELoss(reduce=True, reduction="mean")
 
@@ -138,32 +154,67 @@ def train(epoch):
     train_loss = 0
     acc = 0.0
     total = 0
+    
+    if t_net and cfg.dis_feature:
+        hooks = get_hooks()
+
     if cfg.use_amp:
         scaler = torch.cuda.amp.GradScaler()
     for batch_idx, (inputs, targets) in enumerate(trainloader):
+        
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
         if cfg.use_amp:
             with torch.cuda.amp.autocast():  # 自动混合精度 (pytorch1.6之后)
                 outputs = net(inputs)
                 if t_net:
+                    loss = torch.cuda.FloatTensor(0) if outputs.is_cuda else torch.Tensor(0)
                     with torch.no_grad():
                         teacher_outputs = t_net(inputs)
+                    if cfg.dis_feature:
+                        t_out = []
+                        s_out = []
+                        for k, v in activation.items():
+                            g, k, n = k.split("_")
+                            # 一一配对feature, 进行loss 计算
+                            if g == "s":
+                                s_out.append(v)
+                            else:
+                                t_out.append(v)
+                        # 选定的 feature 分别计算loss 
+                        fs_loss = [loss_fn(s_out[i], t_out[i]) for i, loss_fn in enumerate(fs_criterion)]
+                        fs_loss = torch.sum(torch.cuda.FloatTensor(fs_loss) if teacher_outputs.is_cuda else torch.Tensor(fs_loss)) * 10.
+                        loss += fs_loss
                     s_loss = criterion(outputs, targets) * 10.
-                    d_loss = t_criterion(outputs, teacher_outputs) * 10.
-                    loss = s_loss * (1 - cfg.alpha) + d_loss * cfg.alpha
+                    do_loss = t_criterion(outputs, teacher_outputs) * 10.
+                    loss += (s_loss * (1 - cfg.alpha) + do_loss * cfg.alpha)
                 else:
-                    loss = criterion(outputs, targets) * 10.
+                    loss = criterion(outputs, targets) * 10. 
         else:
             outputs = net(inputs)
-            loss = criterion(outputs, targets) * 10.
-
             if t_net:
+                loss = torch.cuda.FloatTensor([0]) if outputs.is_cuda else torch.Tensor([0])
                 with torch.no_grad():
                     teacher_outputs = t_net(inputs)
+                if cfg.dis_feature:
+                    t_out = []
+                    s_out = []
+                    for k, v in activation.items():
+                        g, k, n = k.split("_")
+                        # 一一配对feature, 进行loss 计算
+                        if g == "s":
+                            s_out.append(v)
+                        else:
+                            t_out.append(v)
+                    # 选定的 features 分别计算loss 
+                    fs_loss = [loss_fn(s_out[i], t_out[i]) for i, loss_fn in enumerate(fs_criterion)]
+                    fs_loss = torch.sum(torch.cuda.FloatTensor(fs_loss) if teacher_outputs.is_cuda else torch.Tensor(fs_loss)) * 10.
+                    loss += fs_loss
                 s_loss = criterion(outputs, targets) * 10.
-                d_loss = t_criterion(outputs, teacher_outputs) * 10.
-                loss = s_loss * (1 - cfg.alpha) + d_loss * cfg.alpha
+                do_loss = t_criterion(outputs, teacher_outputs) * 10.
+                loss += (s_loss * (1 - cfg.alpha) + do_loss * cfg.alpha)
+            else:
+                loss = criterion(outputs, targets) * 10. 
 
         if cfg.use_amp:
             # Scales loss. 为了梯度放大.
@@ -188,6 +239,10 @@ def train(epoch):
 
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d)'
             % (train_loss/(batch_idx+1), 100.*acc/(batch_idx+1), total))
+    
+    if t_net and cfg.dis_feature:
+        for hook in hooks:
+            hook.remove()
 
 
 def test(epoch):

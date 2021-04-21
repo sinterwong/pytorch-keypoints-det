@@ -49,7 +49,7 @@ def main():
 
     model.eval()
 
-    dummy_input1 = torch.randn(1, 3, 128, 128)
+    dummy_input1 = torch.randn(1, 3, 224, 224)
     # convert to onnx
     print("convert to onnx......")
     input_names = [ "input"]

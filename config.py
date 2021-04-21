@@ -19,7 +19,7 @@ train_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/
 val_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
 
 # solver
-device_ids = [2]
+device_ids = [3]
 batch_size = 64
 epoch = 300
 optim = "sgd"
@@ -32,14 +32,18 @@ num_workers = 8
 use_amp = False
 
 # model info
-model = "seresnet18"
+model = "resnet10"
 pretrained = "weights/resnet18-5c106cde.pth"
 save_checkpoint = 'checkpoint'
 resume = None
 
 # knowledge distill
-# teacher = "resnet50"
-teacher = None
-teacker_ckpt = "checkpoint/resnet50_handpose_224x224_88.pth"
-alpha = 0.9
+teacher = "resnet18"
+teacker_ckpt = "checkpoint/resnet18_handpose_224x224_83.34.pth"
+alpha = 0.5  # 当 alpha 为0时, 意味着不使用 output 进行蒸馏
 temperature = 6
+dis_feature = {
+    'layer1': (0, 'bn2'), 
+    'layer2': (0, 'bn2'), 
+    'layer3': (0, 'bn2'),
+}

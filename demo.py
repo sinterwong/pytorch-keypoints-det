@@ -3,7 +3,7 @@ from models.resnet import resnet10, resnet18, resnet34, resnet50
 from models.seresnet import se_resnet10, se_resnet18, se_resnet34, se_resnet50
 from models.repvgg import get_RepVGG_func_by_name
 from models.mobilenetv3 import mobilenet_v3_small
-from utils import visualisation
+from tools.utils import visualisation
 import config as cfg
 import cv2
 import numpy as np
