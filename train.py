@@ -12,6 +12,7 @@ import argparse
 from data.dataset import ImageDataSet
 from data.transform import data_transform
 from models.resnet import resnet10, resnet18, resnet34, resnet50
+from models.seresnet import se_resnet10, se_resnet18, se_resnet34, se_resnet50
 from models.repvgg import get_RepVGG_func_by_name
 from models.mobilenetv3 import mobilenet_v3_small
 from utils import progress_bar
@@ -51,6 +52,14 @@ elif cfg.model == "resnet34":
     net = resnet34(pretrained=cfg.pretrained, num_classes=cfg.num_classes)
 elif cfg.model == "resnet50":
     net = resnet50(pretrained=cfg.pretrained, num_classes=cfg.num_classes)
+elif cfg.model == "seresnet10":
+    net = se_resnet10(pretrained=cfg.pretrained, num_classes=cfg.num_classes)
+elif cfg.model == "seresnet18":
+    net = se_resnet18(pretrained=cfg.pretrained, num_classes=cfg.num_classes)
+elif cfg.model == "seresnet34":
+    net = se_resnet34(pretrained=cfg.pretrained, num_classes=cfg.num_classes)
+elif cfg.model == "seresnet50":
+    net = se_resnet50(pretrained=cfg.pretrained, num_classes=cfg.num_classes)
 elif cfg.model == "mobilenetv3_small":
     net = mobilenet_v3_small(pretrained=cfg.pretrained, num_classes=cfg.num_classes)
 elif cfg.model.split("-")[0] == "RepVGG":
@@ -72,6 +81,12 @@ if cfg.teacher:
         t_net = resnet34(pretrained=None, num_classes=cfg.num_classes)
     elif cfg.teacher == "resnet50":
         t_net = resnet50(pretrained=None, num_classes=cfg.num_classes)
+    elif cfg.model == "seresnet18":
+        t_net = se_resnet18(pretrained=None, num_classes=cfg.num_classes)
+    elif cfg.model == "seresnet34":
+        t_net = se_resnet34(pretrained=None, num_classes=cfg.num_classes)
+    elif cfg.model == "seresnet50":
+        t_net = se_resnet50(pretrained=None, num_classes=cfg.num_classes)
     elif cfg.teacher.split("-")[0] == "RepVGG":
         repvgg_build_func = get_RepVGG_func_by_name(cfg.teacher)
         t_net = repvgg_build_func(num_classes=cfg.num_classes, pretrained_path=None, deploy=True)

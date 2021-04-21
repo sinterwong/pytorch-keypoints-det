@@ -32,13 +32,14 @@ num_workers = 8
 use_amp = False
 
 # model info
-model = "resnet18"
+model = "seresnet18"
 pretrained = "weights/resnet18-5c106cde.pth"
 save_checkpoint = 'checkpoint'
 resume = None
 
 # knowledge distill
-teacher = "resnet50"
+# teacher = "resnet50"
+teacher = None
 teacker_ckpt = "checkpoint/resnet50_handpose_224x224_88.pth"
 alpha = 0.9
 temperature = 6

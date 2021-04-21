@@ -3,8 +3,8 @@ import torch.nn as nn
 # from torchvision.models.utils import load_state_dict_from_url
 import os
 from torch.nn import functional as F
-from pprint import pprint
 from torchvision import datasets, models, transforms
+from .selayer import SELayer
 
 
 model_urls = {
@@ -31,37 +31,37 @@ def conv1x1(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
-class BasicBlock(nn.Module):
+class SEBasicBlock(nn.Module):
     expansion = 1
     __constants__ = ['downsample']
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-                 base_width=64, dilation=1, norm_layer=None):
-        super(BasicBlock, self).__init__()
+                 base_width=64, dilation=1, norm_layer=None, reduction=16):
+        super(SEBasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         if groups != 1 or base_width != 64:
             raise ValueError('BasicBlock only supports groups=1 and base_width=64')
         if dilation > 1:
             raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
-        # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
+        self.conv2 = conv3x3(planes, planes, 1)
         self.bn2 = norm_layer(planes)
+        self.se = SELayer(planes, reduction)
         self.downsample = downsample
         self.stride = stride
 
     def forward(self, x):
         identity = x
-
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
+        out = self.se(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -71,14 +71,13 @@ class BasicBlock(nn.Module):
 
         return out
 
-
-class Bottleneck(nn.Module):
+class SEBottleneck(nn.Module):
     expansion = 4
     __constants__ = ['downsample']
 
     def __init__(self, inplanes, planes, stride=1, downsample=None, groups=1,
-                 base_width=64, dilation=1, norm_layer=None):
-        super(Bottleneck, self).__init__()
+                 base_width=64, dilation=1, norm_layer=None, reduction=16):
+        super(SEBottleneck, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         width = int(planes * (base_width / 64.)) * groups
@@ -90,8 +89,10 @@ class Bottleneck(nn.Module):
         self.conv3 = conv1x1(width, planes * self.expansion)
         self.bn3 = norm_layer(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
+        self.se = SELayer(planes * self.expansion, reduction)
         self.downsample = downsample
         self.stride = stride
+
 
     def forward(self, x):
         identity = x
@@ -106,6 +107,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
+        out = self.se(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -165,9 +167,9 @@ class ResNet(nn.Module):
         # This improves the model by 0.2~0.3% according to https://arxiv.org/abs/1706.02677
         if zero_init_residual:
             for m in self.modules():
-                if isinstance(m, Bottleneck):
+                if isinstance(m, SEBottleneck):
                     nn.init.constant_(m.bn3.weight, 0)
-                elif isinstance(m, BasicBlock):
+                elif isinstance(m, SEBasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
@@ -235,62 +237,62 @@ def _resnet(arch, block, layers, progress, num_classes=None, pretrained=None, **
     return model
 
 
-def resnet10(pretrained=None, progress=True, num_classes=None, **kwargs):
-    r"""ResNet-18 model from
+def se_resnet10(pretrained=None, progress=True, num_classes=None, **kwargs):
+    r"""SE-ResNet-10 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet10', BasicBlock, [1, 1, 1, 1], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
+    return _resnet('se_resnet10', SEBasicBlock, [1, 1, 1, 1], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
 
 
-def resnet18(pretrained=None, progress=True, num_classes=None, **kwargs):
-    r"""ResNet-18 model from
+def se_resnet18(pretrained=None, progress=True, num_classes=None, **kwargs):
+    r"""SE-ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet18', BasicBlock, [2, 2, 2, 2], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
+    return _resnet('se_resnet18', SEBasicBlock, [2, 2, 2, 2], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
 
 
-def resnet34(pretrained=None, progress=True, num_classes=None, **kwargs):
-    r"""ResNet-34 model from
+def se_resnet34(pretrained=None, progress=True, num_classes=None, **kwargs):
+    r"""SE-ResNet-34 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet34', BasicBlock, [3, 4, 6, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
+    return _resnet('se_resnet34', SEBasicBlock, [3, 4, 6, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
 
 
-def resnet50(pretrained=None, progress=True, num_classes=None, **kwargs):
-    r"""ResNet-50 model from
+def se_resnet50(pretrained=None, progress=True, num_classes=None, **kwargs):
+    r"""SE-ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet50', Bottleneck, [3, 4, 6, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
+    return _resnet('se_resnet50', SEBottleneck, [3, 4, 6, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
 
 
-def resnet101(pretrained=None, progress=True, num_classes=None, **kwargs):
-    r"""ResNet-101 model from
+def se_resnet101(pretrained=None, progress=True, num_classes=None, **kwargs):
+    r"""SE-ResNet-101 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet101', Bottleneck, [3, 4, 23, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
+    return _resnet('se_resnet101', SEBottleneck, [3, 4, 23, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
 
 
-def resnet152(pretrained=None, progress=True, num_classes=None, **kwargs):
-    r"""ResNet-152 model from
+def se_resnet152(pretrained=None, progress=True, num_classes=None, **kwargs):
+    r"""SE-ResNet-152 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet('resnet152', Bottleneck, [3, 8, 36, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
+    return _resnet('se_resnet152', SEBottleneck, [3, 8, 36, 3], progress, num_classes=num_classes, pretrained=pretrained, **kwargs)
 

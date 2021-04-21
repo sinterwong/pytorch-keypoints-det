@@ -1,5 +1,6 @@
 import torch
 from models.resnet import resnet10, resnet18, resnet34, resnet50
+from models.seresnet import se_resnet10, se_resnet18, se_resnet34, se_resnet50
 from models.repvgg import get_RepVGG_func_by_name
 from models.mobilenetv3 import mobilenet_v3_small
 from utils import visualisation
@@ -23,6 +24,14 @@ class Inference():
             self.net = resnet34(pretrained=None, num_classes=cfg.num_classes)
         elif model == "resnet50":
             self.net = resnet50(pretrained=None, num_classes=cfg.num_classes)
+        elif model == "seresnet10":
+            self.net = se_resnet10(pretrained=None, num_classes=cfg.num_classes)
+        elif model == "seresnet18":
+            self.net = se_resnet18(pretrained=None, num_classes=cfg.num_classes)
+        elif model == "seresnet34":
+            self.net = se_resnet34(pretrained=None, num_classes=cfg.num_classes)
+        elif model == "seresnet50":
+            self.net = se_resnet50(pretrained=None, num_classes=cfg.num_classes)
         elif model == "mobilenetv3_small":
             self.net = mobilenet_v3_small(pretrained=None, num_classes=cfg.num_classes)
         elif model.split("-")[0] == "RepVGG":

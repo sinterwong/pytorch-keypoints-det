@@ -5,6 +5,7 @@ import os
 import torch
 import collections
 from models.resnet import resnet10, resnet18, resnet34, resnet50
+from models.seresnet import se_resnet10, se_resnet18, se_resnet34, se_resnet50
 from models.mobilenetv3 import mobilenet_v3_small
 from models.repvgg import get_RepVGG_func_by_name, repvgg_model_convert
 import config as cfg
@@ -19,6 +20,14 @@ def main():
         model = resnet34(pretrained=None, num_classes=cfg.num_classes)
     elif cfg.model == "resnet50":
         model = resnet50(pretrained=None, num_classes=cfg.num_classes)
+    elif cfg.model == "seresnet10":
+        model = se_resnet10(pretrained=None, num_classes=cfg.num_classes)
+    elif cfg.model == "seresnet18":
+        model = se_resnet18(pretrained=None, num_classes=cfg.num_classes)
+    elif cfg.model == "seresnet34":
+        model = se_resnet34(pretrained=None, num_classes=cfg.num_classes)
+    elif cfg.model == "seresnet50":
+        model = se_resnet50(pretrained=None, num_classes=cfg.num_classes)
     elif cfg.model == "mobilenetv3_small":
         model = mobilenet_v3_small(pretrained=None, num_classes=cfg.num_classes)
     elif cfg.model.split("-")[0] == "RepVGG":
