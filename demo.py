@@ -36,7 +36,7 @@ class Inference():
             self.net = mobilenet_v3_small(pretrained=None, num_classes=cfg.num_classes)
         elif model.split("-")[0] == "RepVGG":
             repvgg_build_func = get_RepVGG_func_by_name(model)
-            self.net = repvgg_build_func(num_classes=cfg.num_classes, pretrained_path=None, deploy=False)
+            self.net = repvgg_build_func(num_classes=cfg.num_classes, pretrained_path=None, deploy=True)
         else:
             raise Exception("暂未支持, 请在此处手动添加")
         self._load_model(ckpt)
@@ -69,7 +69,7 @@ class Inference():
 
 if __name__ == "__main__":
     model = 'resnet50'
-    model_path = 'checkpoint/best_resnet50_handpose_224x224.pth'
+    model_path = 'checkpoint/resnet50_handpose_224x224_88.pth'
     img_path = 'data/demo.jpg'
     engine = Inference(model, model_path, [224, 224])
     engine.single_image(img_path)

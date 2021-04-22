@@ -29,21 +29,25 @@ lr = 2e-3
 momentum = 0.9
 weight_decay = 5e-4
 num_workers = 8
-use_amp = False
 
 # model info
-model = "resnet10"
+model = "seresnet18"
 pretrained = "weights/resnet18-5c106cde.pth"
 save_checkpoint = 'checkpoint'
 resume = None
 
 # knowledge distill
-teacher = "resnet18"
-teacker_ckpt = "checkpoint/resnet18_handpose_224x224_83.34.pth"
-alpha = 0.5  # 当 alpha 为0时, 意味着不使用 output 进行蒸馏
+teacher = "seresnet34"
+teacher = None
+teacker_ckpt = "checkpoint/seresnet34_handpose_224x224_86.915.pth"
+alpha = 0.01  # 当 alpha 为0时, 意味着不使用 output 进行蒸馏
 temperature = 6
+# 要求老师网络所选层和学生网络所选层维度一致, 或使用conv1x1 对学生网络进行调整
 dis_feature = {
     'layer1': (0, 'bn2'), 
+    'layer1': (1, 'bn2'), 
     'layer2': (0, 'bn2'), 
+    'layer2': (1, 'bn2'), 
     'layer3': (0, 'bn2'),
+    'layer3': (1, 'bn2'),
 }

@@ -17,22 +17,11 @@ class KLDivLoss():
 
 
 class DistillFeatureMSELoss():
-    def __init__(self, reduction="mean", num_df=3):
+    def __init__(self, reduction="mean", num_df=3, alpha=10.):
         super(DistillFeatureMSELoss).__init__()
         self.criterion = [nn.MSELoss(reduction=reduction)] * num_df
-        self.activation = None
+        self.alpha = alpha
 
-    def __call__(self):
-        assert self.activation is not None, "Please complete the 'hook' first."
-        t_out = []
-        s_out = []
-        for k, v in self.activation.items():
-            g, k, n = k.split("_")
-            # 一一配对feature, 进行loss 计算
-            if g == "s":
-                s_out.append(v)
-            else:
-                t_out.append(v)
-        # 选定的 feature 分别计算loss 
+    def __call__(self, s_out, t_out):
         fs_loss = [loss_fn(s_out[i], t_out[i]) for i, loss_fn in enumerate(self.criterion)]
-        return torch.sum(torch.cuda.FloatTensor(fs_loss) if v.is_cuda else torch.Tensor(fs_loss)) * 10.
+        return torch.sum(torch.cuda.FloatTensor(fs_loss) if s_out[0].is_cuda else torch.Tensor(fs_loss)) * self.alpha

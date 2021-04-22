@@ -32,7 +32,7 @@ def main():
         model = mobilenet_v3_small(pretrained=None, num_classes=cfg.num_classes)
     elif cfg.model.split("-")[0] == "RepVGG":
         repvgg_build_func = get_RepVGG_func_by_name(cfg.model)
-        model = repvgg_build_func(num_classes=cfg.num_classes, pretrained_path=cfg.pretrained, deploy=False)
+        model = repvgg_build_func(num_classes=cfg.num_classes, pretrained_path=cfg.pretrained, deploy=True)
 
     else:
         raise Exception("暂未支持, 请在此处手动添加")
