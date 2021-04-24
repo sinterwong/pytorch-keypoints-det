@@ -39,7 +39,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=cfg.batch_size, shu
 
 # Model
 print('==> Building model..')
-net = build_network_by_name(cfg.model, cfg.pretrained, cfg.num_classes)
+net = build_network_by_name(cfg.model, cfg.pretrained, cfg.num_classes, deploy=False)
 
 net = net.to(device)
 if device == 'cuda' and len(cfg.device_ids) > 1:
@@ -49,7 +49,7 @@ if device == 'cuda' and len(cfg.device_ids) > 1:
 # Knowledge Distillation 
 if cfg.teacher:
     print('==> Building teacher model..')
-    t_net = build_teacher_network_by_name(cfg.teacher, cfg.num_classes)
+    t_net = build_network_by_name(cfg.teacher, None, cfg.num_classes, deploy=True)
 else:
     t_net = None
 
