@@ -11,7 +11,7 @@ import torchvision.transforms as T
 import argparse
 from data.dataset import ImageDataSet
 from data.transform import data_transform
-from models.get_network import build_network_by_name, build_teacher_network_by_name
+from models.get_network import build_network_by_name
 from tools.utils import progress_bar
 from tools.distill import DistillForFeatures
 from loss.amsoftmax import AMSoftmax
@@ -113,7 +113,7 @@ def train(epoch):
         with torch.cuda.amp.autocast():  # 自动混合精度 (pytorch1.6之后)
             outputs = net(inputs)
             if t_net:
-                loss = torch.cuda.FloatTensor(0) if outputs.is_cuda else torch.Tensor(0)
+                loss = torch.cuda.FloatTensor([0]) if outputs.is_cuda else torch.Tensor([0])
                 with torch.no_grad():
                     teacher_outputs = t_net(inputs)
                 if cfg.dis_feature:

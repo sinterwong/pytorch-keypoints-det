@@ -1,3 +1,5 @@
+import os
+
 # dataset
 input_size = (224, 224)
 
@@ -19,7 +21,7 @@ train_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/
 val_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
 
 # solver
-device_ids = [3]
+device_ids = [2]
 batch_size = 64
 epoch = 300
 optim = "sgd"
@@ -31,13 +33,11 @@ weight_decay = 5e-4
 num_workers = 8
 
 # model info
-model = "seresnet18"
-pretrained = "weights/resnet18-5c106cde.pth"
-save_checkpoint = 'checkpoint'
+model = "seresnet50"
+pretrained = "weights/resnet50-19c8e357.pth"
 resume = None
 
 # knowledge distill
-teacher = "seresnet34"
 teacher = None
 teacker_ckpt = "checkpoint/seresnet34_handpose_224x224_86.915.pth"
 alpha = 0.01  # 当 alpha 为0时, 意味着不使用 output 进行蒸馏
@@ -51,3 +51,7 @@ dis_feature = {
     'layer3': (0, 'bn2'),
     'layer3': (1, 'bn2'),
 }
+
+save_checkpoint = os.path.join('checkpoint', data_name, model)
+if not os.path.exists(save_checkpoint):
+    os.makedirs(save_checkpoint)

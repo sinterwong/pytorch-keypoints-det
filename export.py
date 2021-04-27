@@ -4,23 +4,27 @@ from __future__ import division
 import os
 import torch
 import collections
-from models.get_network import build_network_by_name
-from models.repvgg import repvgg_model_convert
+from models.get_network import build_network_by_name, repvgg_model_convert
 import config as cfg
+import shutil
 
 
 def main():
-    model = build_network_by_name(cfg.model, None, num_classes=cfg.num_classes, deploy=False)
+    model = build_network_by_name(cfg.model, None, num_classes=len(cfg.classes))
 
-    model_path = "checkpoint/best_%s_%s_%dx%d.pth" % (cfg.model, cfg.data_name, cfg.input_size[0], cfg.input_size[1])
+    model_name = "best_%s_%s_%dx%d.pth" % (cfg.model, cfg.data_name, cfg.input_size[0], cfg.input_size[1])
+    model_path = os.path.join(cfg.save_checkpoint, model_name)
     model_info = torch.load(model_path)
     model.load_state_dict(model_info["net"])
 
-    output = "checkpoint/%s_%s_%dx%d_%.3f" % (cfg.model, cfg.data_name, cfg.input_size[0], cfg.input_size[1], model_info['acc'])
+    output = os.path.join(cfg.save_checkpoint, "%s_%s_%dx%d_%.3f" % (cfg.model, cfg.data_name, cfg.input_size[0], cfg.input_size[1], model_info['acc']))
 
     if cfg.model.split("-")[0] == "RepVGG":
         # convert to inference module
-        model = repvgg_model_convert(model, save_path=output + ".pth")
+        model = repvgg_model_convert(model, save_path=output + "_depoly.pth")
+        shutil.move(model_path, output + "_train.pth")
+    else:
+        shutil.move(model_path, output + ".pth")
 
     model.eval()
 
