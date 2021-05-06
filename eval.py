@@ -20,7 +20,8 @@ def test(model_name, model_path, val_path, device='cuda'):
     net = build_network_by_name(model_name, None, num_classes=cfg.num_classes, deploy=True)
     
     model_info = torch.load(model_path)
-    net.load_state_dict(model_info["net"])
+    net.load_state_dict(model_info['net'])
+    # net.load_state_dict(model_info)
     net = net.to(device)
     net.eval()
 
@@ -38,7 +39,7 @@ def test(model_name, model_path, val_path, device='cuda'):
 
 
 if __name__ == "__main__":
-    model_name = 'seresnet34'
-    model_path = 'checkpoint/handpose/seresnet34/baseline/seresnet34_handpose_224x224_86.915.pth'
+    model_name = 'resnet50'
+    model_path = '/home/wangjq/wangxt/workspace/handpose_x-master/weights/resnet_50-size-256-wingloss102-0.119.pth'
     val_path = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
     test(model_name, model_path, val_path)

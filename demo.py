@@ -18,13 +18,15 @@ class Inference():
 
     def _load_model(self, ckpt):
         model_info = torch.load(ckpt)
-        self.net.load_state_dict(model_info["net"])
+        # self.net.load_state_dict(model_info["net"])
+        self.net.load_state_dict(model_info)
         self.net = self.net.to(self.device)
         self.net.eval()
 
     def _preprocess(self, frame):
         frame = cv2.resize(frame, (self.input_size[1], self.input_size[0])).astype(np.float32)
         frame /= 255.0
+        # frame = (frame-128.)/256.
         data = torch.from_numpy(np.expand_dims(frame.transpose([2, 0, 1]), axis=0)).to(self.device)
         return data
 
@@ -58,9 +60,9 @@ class Inference():
 
 
 def main():
-    model = 'seresnet34'
-    model_path = 'checkpoint/handpose/seresnet34/baseline/seresnet34_handpose_224x224_86.915.pth'
-    engine = Inference(model, model_path, [224, 224])
+    model = 'resnet50'
+    model_path = '/home/wangjq/wangxt/workspace/handpose_x-master/weights/resnet_50-size-256-wingloss102-0.119.pth'
+    engine = Inference(model, model_path, [256, 256])
 
     im_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
     out_root = "data/%s_vis" % model

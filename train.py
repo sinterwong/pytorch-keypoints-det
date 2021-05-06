@@ -14,7 +14,8 @@ from data.transform import data_transform
 from models.get_network import build_network_by_name
 from tools.utils import progress_bar
 from tools.distill import DistillForFeatures
-from loss.amsoftmax import AMSoftmax
+from loss.awloss import AdaptiveWingLoss
+from loss.wloss import WingLoss
 from loss.distill import DistillFeatureMSELoss
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -31,10 +32,12 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 print('==> Preparing data..')
 
 # get dataloader
-trainset = ImageDataSet(root=cfg.train_root, input_size=cfg.input_size, is_train=True, augments_hyp=cfg.augment_hyp)
+train_transform = data_transform(is_train=True)
+trainset = ImageDataSet(root=cfg.train_root, input_size=cfg.input_size, is_train=True, transform=train_transform)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers)
 
-testset = ImageDataSet(root=cfg.val_root, input_size=cfg.input_size, is_train=False)
+test_transform = data_transform(is_train=False)
+testset = ImageDataSet(root=cfg.val_root, input_size=cfg.input_size, is_train=False, transform=test_transform)
 testloader = torch.utils.data.DataLoader(testset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
 
 # Model
@@ -65,7 +68,11 @@ if t_net and cfg.dis_feature:
     f_distill = DistillForFeatures(cfg.dis_feature, net, t_net)
     fs_criterion = DistillFeatureMSELoss(reduction="mean", num_df=len(cfg.dis_feature))
 
-criterion = nn.MSELoss(reduce=True, reduction="mean")
+# criterion = nn.MSELoss(reduce=True, reduction="sum")
+# criterion = AdaptiveWingLoss()
+criterion = WingLoss()
+# criterion = nn.SmoothL1Loss(reduce=True, reduction='sum')
+
 
 if cfg.optim == "sgd":
     optimizer = optim.SGD(
@@ -73,6 +80,7 @@ if cfg.optim == "sgd":
                         lr=cfg.lr, 
                         momentum=cfg.momentum, 
                         weight_decay=cfg.weight_decay)
+
 elif cfg.optim == "adam":
     optimizer = torch.optim.Adam(
                         filter(lambda p: p.requires_grad, net.parameters()), 
@@ -129,12 +137,11 @@ def train(epoch):
                     # 选定的 feature 分别计算loss
                     fs_loss = fs_criterion(s_out, t_out)
                     loss += fs_loss
-                s_loss = criterion(outputs, targets) * 10.
-                do_loss = t_criterion(outputs, teacher_outputs) * 10.
+                s_loss = criterion(outputs, targets)
+                do_loss = t_criterion(outputs, teacher_outputs)
                 loss += (s_loss * (1 - cfg.alpha) + do_loss * cfg.alpha)
             else:
-                loss = criterion(outputs, targets) * 10. 
-
+                loss = criterion(outputs, targets)
             # Scales loss. 放大梯度.
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -144,7 +151,7 @@ def train(epoch):
         total += targets.size(0)
         acc += 1 - torch.mean(torch.sum((outputs.detach() - targets.detach()) ** 2, dim=0) / torch.sum((torch.mean(targets, dim=0) - targets) ** 2, dim=0))
 
-        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d)'
+        progress_bar(batch_idx, len(trainloader), 'Loss: %.5f | Acc: %.3f%% (%d)'
             % (train_loss/(batch_idx+1), 100.*acc/(batch_idx+1), total))
     
     if t_net and cfg.dis_feature:
@@ -163,12 +170,12 @@ def test(epoch):
             inputs, targets = inputs.to(device), targets.to(device)
             with torch.no_grad():
                 outputs = net(inputs)
-                loss = criterion(outputs, targets) * 10.
+                loss = criterion(outputs, targets)
                 test_loss += loss.item()
                 total += targets.size(0)
                 acc += 1 - torch.mean(torch.sum((outputs.detach() - targets.detach()) ** 2, dim=0) / torch.sum((torch.mean(targets, dim=0) - targets) ** 2, dim=0))
 
-            progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d)'
+            progress_bar(batch_idx, len(testloader), 'Loss: %.5f | Acc: %.3f%% (%d)'
                 % (test_loss/(batch_idx+1), 100.*acc/(batch_idx+1), total))
 
     # Save checkpoint.

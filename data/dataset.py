@@ -40,7 +40,7 @@ def read_image(img_path, part_size=0, rand_ch=None):
 
 
 class ImageDataSet(Dataset):
-    def __init__(self, root, input_size=(256, 256), is_train=False, augments_hyp=None, transform=None):
+    def __init__(self, root, input_size=(256, 256), is_train=False, transform=None):
         super(ImageDataSet, self).__init__()
 
         """ 数据需处理成一图一目标
@@ -50,8 +50,6 @@ class ImageDataSet(Dataset):
         random.shuffle(self.image_paths)
         self.is_train = is_train
         self.input_size = input_size
-        # augments params
-        self.augments_hyp = augments_hyp
 
         if transform is None:
             self.transform = T.ToTensor()
@@ -75,19 +73,9 @@ class ImageDataSet(Dataset):
         # read image
         img = cv2.imread(img_p)
 
-        # # 可视化检查数据
-        # vis_points = points.copy()
-        # vis_points[:, 0] *= self.input_size[1]
-        # vis_points[:, 1] *= self.input_size[0]
-        # print(vis_points)
-        # for p in vis_points.astype(np.int32):
-        #     cv2.circle(obj_img, tuple(p), 1, (0, 0, 255), 2)
-        # cv2.imwrite("out.jpg", obj_img)
-        # exit()
-
         # ==== Augments ====
         if self.is_train:
-            # 切出手部截图, 加上一些抖动
+            # 切出手部截图, 加上一些抖动; TODO 加入缩小抖动, 如果某个点消失置信度归零
             x_, y_, w_, h_ = cv2.boundingRect(points.astype(np.int32))
 
             # 手部区域
@@ -113,15 +101,12 @@ class ImageDataSet(Dataset):
             points[:, 0] /= (x2 - x1)
             points[:, 1] /= (y2 - y1)
 
-            # resize
-            img = cv2.resize(img, (self.input_size[1], self.input_size[0]))
-
-            if self.augments_hyp['flipud'] and random.random() < 0.5:
+            if random.random() < 0.5:
                 # flip up-down
                 img = np.flipud(img)
                 points[:, 1] = 1 - points[:, 1]
 
-            if self.augments_hyp['fliplr'] and random.random() < 0.5:
+            if random.random() < 0.5:
                 # flip left-right
                 img = np.fliplr(img)
                 points[:, 0] = 1 - points[:, 0]
@@ -129,19 +114,36 @@ class ImageDataSet(Dataset):
             # TODO random perspective
             # if random.random() < 0.5:
             #     img, points = self.random_perspective(img, points)
+            
+            # 可视化检查数据
+            # vis_points = points.copy()
+            # vis_points[:, 0] *= (x2 - x1)
+            # vis_points[:, 1] *= (y2 - y1)
+            # obj_img = img.copy().astype(np.uint8)
+            # for p in vis_points.astype(np.int32):
+            #     cv2.circle(obj_img, tuple(p), 1, (0, 0, 255), 2)
+            # cv2.imwrite("out.jpg", obj_img)
+            # exit()
 
-            # augment colorspace
-            if random.random() > 0.5:
-                img = self.augment_hsv(img)
         else:
             h, w, _ = img.shape
-            img = cv2.resize(img, (self.input_size[1], self.input_size[0]))
             points[:, 0] /= w
             points[:, 1] /= h
 
-        img = img[:, :, ::-1]  # BGR to RGB
-        img = np.ascontiguousarray(img)
+            # vis_points = points.copy()
+            # vis_points[:, 0] *= w
+            # vis_points[:, 1] *= h
+            # obj_img = img.copy().astype(np.uint8)
+            # for p in vis_points.astype(np.int32):
+            #     cv2.circle(obj_img, tuple(p), 1, (0, 0, 255), 2)
+            # cv2.imwrite("out.jpg", obj_img)
+            # exit()
+
+        img = Image.fromarray(img[:, :, ::-1])  # bgr -> rgb for PIL
         data = self.transform(img)
+        # data = (img-128.)/256.
+        # data = torch.FloatTensor(data.transpose([2, 0, 1]))
+
         return data, torch.from_numpy(points.reshape(-1)).float()
 
     def random_perspective(self, img, points):

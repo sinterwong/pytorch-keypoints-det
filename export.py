@@ -10,7 +10,7 @@ import shutil
 
 
 def main():
-    model = build_network_by_name(cfg.model, None, num_classes=len(cfg.classes))
+    model = build_network_by_name(cfg.model, None, num_classes=cfg.num_classes, deploy=False)
 
     model_name = "best_%s_%s_%dx%d.pth" % (cfg.model, cfg.data_name, cfg.input_size[0], cfg.input_size[1])
     model_path = os.path.join(cfg.save_checkpoint, model_name)

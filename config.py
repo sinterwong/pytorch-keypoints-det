@@ -3,17 +3,11 @@ import os
 # dataset
 input_size = (224, 224)
 
-augment_hyp = {
-    'hsv_h': 0.014,  # image HSV-Hue augmentation (fraction)
-    'hsv_s': 0.68,  # image HSV-Saturation augmentation (fraction)
-    'hsv_v': 0.36,  # image HSV-Value augmentation (fraction)
-    'degrees': 0.0,  # image rotation (+/- deg)
-    'translate': 0.0,  # image translation (+/- fraction)
-    'scale': 0.5,  # image scale (+/- gain)
-    'shear': 0.0, 
-    'fliplr' : True,
-    'flipud' : True
-}
+bright_prob = 0.2
+satura_prob = 0.2
+contrast_prob = 0.2
+hue_prob = 0.2
+
 data_name = "handpose"
 num_points = 21
 num_classes = num_points * 2  # 每个点存在三个属性: x, y, z(该点是否遮挡)
@@ -24,17 +18,17 @@ val_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/va
 device_ids = [2]
 batch_size = 64
 epoch = 300
-optim = "sgd"
+optim = "adam"
 lr_gamma = 0.5  # 衰减比率
-lr_step_size = 35  # 多少 epoch 衰减一次
-lr = 2e-3
+lr_step_size = 25  # 多少 epoch 衰减一次
+lr = 1e-3
 momentum = 0.9
 weight_decay = 5e-4
 num_workers = 8
 
 # model info
-model = "seresnet50"
-pretrained = "weights/resnet50-19c8e357.pth"
+model = "resnet18"
+pretrained = "weights/resnet34-333f7ec4.pth"
 resume = None
 
 # knowledge distill
