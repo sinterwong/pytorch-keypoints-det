@@ -9,8 +9,8 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as T
 import argparse
-from data.dataset import ImageDataSet
-from data.transform import data_transform
+from data.dataset import ImageDataSet, KeypointsDetDataSet
+from data.transform import data_transform, fast_transform, data_aug
 from models.get_network import build_network_by_name
 from tools.utils import progress_bar
 from tools.distill import DistillForFeatures
@@ -32,12 +32,12 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 print('==> Preparing data..')
 
 # get dataloader
-train_transform = data_transform(is_train=True)
-trainset = ImageDataSet(root=cfg.train_root, input_size=cfg.input_size, is_train=True, transform=train_transform)
+aug_seq = data_aug()
+transform = fast_transform()
+trainset = KeypointsDetDataSet(root=cfg.train_root, input_size=cfg.input_size, is_train=True, transform=transform, data_aug=aug_seq)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=cfg.batch_size, shuffle=True, num_workers=cfg.num_workers)
 
-test_transform = data_transform(is_train=False)
-testset = ImageDataSet(root=cfg.val_root, input_size=cfg.input_size, is_train=False, transform=test_transform)
+testset = KeypointsDetDataSet(root=cfg.val_root, input_size=cfg.input_size, is_train=False, transform=transform)
 testloader = torch.utils.data.DataLoader(testset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
 
 # Model

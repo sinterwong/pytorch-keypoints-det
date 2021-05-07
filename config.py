@@ -17,18 +17,18 @@ val_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/va
 # solver
 device_ids = [2]
 batch_size = 64
-epoch = 300
-optim = "adam"
+epoch = 500
+optim = "sgd"
 lr_gamma = 0.5  # 衰减比率
-lr_step_size = 25  # 多少 epoch 衰减一次
+lr_step_size = 40  # 多少 epoch 衰减一次
 lr = 1e-3
 momentum = 0.9
 weight_decay = 5e-4
 num_workers = 8
 
 # model info
-model = "resnet18"
-pretrained = "weights/resnet34-333f7ec4.pth"
+model = "resnet50"
+pretrained = "weights/resnet50-19c8e357.pth"
 resume = None
 
 # knowledge distill
