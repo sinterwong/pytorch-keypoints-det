@@ -108,7 +108,7 @@ class KeypointsDetDataSet(Dataset):
         # normalized points 0 - 1
         points[:, 0] /= w
         points[:, 1] /= h
-        
+
         # # 可视化检查数据
         # vis_points = points.copy()
         # vis_points[:, 0] *= w
@@ -121,6 +121,7 @@ class KeypointsDetDataSet(Dataset):
 
         img = Image.fromarray(img[:, :, ::-1])  # bgr -> rgb for PIL
         data = self.transform(img)
+        # img = cv2.resize(img, (self.input_size[1], self.input_size[0]))
         # data = (img-128.)/256.
         # data = torch.FloatTensor(data.transpose([2, 0, 1]))
 

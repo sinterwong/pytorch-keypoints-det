@@ -73,7 +73,6 @@ if t_net and cfg.dis_feature:
 criterion = WingLoss()
 # criterion = nn.SmoothL1Loss(reduce=True, reduction='sum')
 
-
 if cfg.optim == "sgd":
     optimizer = optim.SGD(
                         filter(lambda p: p.requires_grad, net.parameters()), 

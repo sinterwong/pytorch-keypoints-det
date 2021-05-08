@@ -13,21 +13,28 @@ class Inference():
     def __init__(self, model, ckpt, input_size, device='cuda'):
         self.input_size = input_size
         self.device = device
-        self.net = build_network_by_name(model, None, num_classes=cfg.num_classes, deploy=True)
+        self.net = build_network_by_name(
+            model, None, num_classes=cfg.num_classes, deploy=True)
         self._load_model(ckpt)
+        self.means = np.array([0.4914, 0.4822, 0.4465]).reshape(-1, 1, 1)
+        self.stds = np.array([0.2023, 0.1994, 0.2010]).reshape(-1, 1, 1)
 
     def _load_model(self, ckpt):
         model_info = torch.load(ckpt)
-        # self.net.load_state_dict(model_info["net"])
-        self.net.load_state_dict(model_info)
+        self.net.load_state_dict(model_info["net"])
         self.net = self.net.to(self.device)
         self.net.eval()
 
     def _preprocess(self, frame):
-        frame = cv2.resize(frame, (self.input_size[1], self.input_size[0])).astype(np.float32)
+        frame = cv2.resize(
+            frame, (self.input_size[1], self.input_size[0])).astype(np.float32)
+        frame = frame.transpose([2, 0, 1])
+        # norm
         frame /= 255.0
+        frame -= self.means
+        frame /= self.stds
         # frame = (frame-128.)/256.
-        data = torch.from_numpy(np.expand_dims(frame.transpose([2, 0, 1]), axis=0)).to(self.device)
+        data = torch.from_numpy(np.expand_dims(frame, axis=0)).to(self.device)
         return data
 
     def _single_image(self, frame):
@@ -61,8 +68,8 @@ class Inference():
 
 def main():
     model = 'resnet50'
-    model_path = '/home/wangjq/wangxt/workspace/handpose_x-master/weights/resnet_50-size-256-wingloss102-0.119.pth'
-    engine = Inference(model, model_path, [256, 256])
+    model_path = 'checkpoint/handpose/resnet50/best_resnet50_handpose_224x224.pth'
+    engine = Inference(model, model_path, [224, 224])
 
     im_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
     out_root = "data/%s_vis" % model
