@@ -2,7 +2,7 @@ import torch
 from tools.utils import progress_bar
 from models.get_network import build_network_by_name
 import config as cfg
-from data.transform import data_transform, fast_transform
+from data.transform import fast_transform
 from data.dataset import ImageDataSet, KeypointsDetDataSet
 import cv2
 import numpy as np
@@ -41,6 +41,6 @@ def test(model_name, model_path, val_path, device='cuda'):
 
 if __name__ == "__main__":
     model_name = 'resnet50'
-    model_path = '/home/wangjq/wangxt/workspace/handpose_x-master/weights/resnet_50-size-256-wingloss102-0.119.pth'
+    model_path = 'weights/resnet_50-size-256-loss-0.0642.pth'
     val_path = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
     test(model_name, model_path, val_path)

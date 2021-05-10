@@ -1,6 +1,7 @@
 import os
 import config as cfg
 os.environ["CUDA_VISIBLE_DEVICES"] =str(cfg.device_ids[0]) if len(cfg.device_ids) == 1 else ",".join(cfg.device_ids)
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,8 +10,8 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as T
 import argparse
-from data.dataset import ImageDataSet, KeypointsDetDataSet
-from data.transform import data_transform, fast_transform, data_aug
+from data.dataset import KeypointsDetDataSet
+from data.transform import fast_transform, data_aug
 from models.get_network import build_network_by_name
 from tools.utils import progress_bar
 from tools.distill import DistillForFeatures
@@ -68,9 +69,9 @@ if t_net and cfg.dis_feature:
     f_distill = DistillForFeatures(cfg.dis_feature, net, t_net)
     fs_criterion = DistillFeatureMSELoss(reduction="mean", num_df=len(cfg.dis_feature))
 
-# criterion = nn.MSELoss(reduce=True, reduction="sum")
+# criterion = nn.MSELoss(reduce=True, reduction="mean")
 # criterion = AdaptiveWingLoss()
-criterion = WingLoss()
+criterion = WingLoss()  # 有分段, 对离群点处理会好一点, 适合数据不干净时使用
 # criterion = nn.SmoothL1Loss(reduce=True, reduction='sum')
 
 if cfg.optim == "sgd":
@@ -89,7 +90,9 @@ elif cfg.optim == "adam":
 else:
     raise Exception("暂未支持%s optimizer, 请在此处手动添加" % cfg.optim)
 
-lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=cfg.lr_step_size, gamma=cfg.lr_gamma)
+# lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=cfg.lr_step_size, gamma=cfg.lr_gamma)  # 等步长衰减
+# lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=cfg.lr_gamma)  # 每步都衰减(γ 一般0.9+)
+lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epoch // 10)  # 余弦式周期策略
 
 if cfg.resume:
     # Load checkpoint.
@@ -149,9 +152,8 @@ def train(epoch):
         train_loss += loss.item()
         total += targets.size(0)
         acc += 1 - torch.mean(torch.sum((outputs.detach() - targets.detach()) ** 2, dim=0) / torch.sum((torch.mean(targets, dim=0) - targets) ** 2, dim=0))
-
-        progress_bar(batch_idx, len(trainloader), 'Loss: %.5f | Acc: %.3f%% (%d)'
-            % (train_loss/(batch_idx+1), 100.*acc/(batch_idx+1), total))
+        progress_bar(batch_idx, len(trainloader), 'Current lr: %f | Loss: %.5f | Acc: %.3f%% (%d)'
+            % (optimizer.state_dict()['param_groups'][0]['lr'], train_loss/(batch_idx+1), 100.*acc/(batch_idx+1), total))
     
     if t_net and cfg.dis_feature:
         for hook in hooks:

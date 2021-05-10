@@ -3,15 +3,10 @@ import os
 # dataset
 input_size = (224, 224)
 
-bright_prob = 0.2
-satura_prob = 0.2
-contrast_prob = 0.2
-hue_prob = 0.2
-
 data_name = "handpose"
 num_points = 21
 num_classes = num_points * 2  # 每个点存在三个属性: x, y, z(该点是否遮挡)
-train_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/train'
+train_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/train_val'
 val_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
 
 # solver
@@ -21,14 +16,14 @@ epoch = 500
 optim = "sgd"
 lr_gamma = 0.5  # 衰减比率
 lr_step_size = 40  # 多少 epoch 衰减一次
-lr = 1e-3
+lr = 1e-2
 momentum = 0.9
-weight_decay = 5e-4
+weight_decay = 1e-5
 num_workers = 8
 
 # model info
-model = "resnet50"
-pretrained = "weights/resnet50-19c8e357.pth"
+model = "seresnet10"
+pretrained = "weights/resnet18-5c106cde.pth"
 resume = None
 
 # knowledge distill

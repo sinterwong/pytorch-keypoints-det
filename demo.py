@@ -68,7 +68,7 @@ class Inference():
 
 def main():
     model = 'resnet50'
-    model_path = 'checkpoint/handpose/resnet50/best_resnet50_handpose_224x224.pth'
+    model_path = 'checkpoint/handpose/resnet50/resnet50_handpose_224x224_92.321.pth'
     engine = Inference(model, model_path, [224, 224])
 
     im_root = '/home/wangjq/wangxt/datasets/gesture-dataset/handpose_datasets_v1/val'
